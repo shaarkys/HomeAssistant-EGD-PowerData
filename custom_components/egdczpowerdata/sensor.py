@@ -18,13 +18,13 @@ from .const import DOMAIN, CONF_CLIENT_ID, CONF_CLIENT_SECRET, TOKEN_URL, DATA_U
 
 # ANSI escape codes for colored text
 class Colors:
-    RED = 'ERROR ' #'\033[31m'   # Red text
-    GREEN = 'SUCCESS ' #'\033[32m' # Green text
-    YELLOW = '\033[33m' # Yellow text
-    BLUE = '\033[34m'  # Blue text
-    MAGENTA = 'WARN ' #'\033[35m' # Magenta text
-    CYAN = 'INFO ' #'\033[36m'  # Cyan text
-    RESET = ''#'\033[0m'  # Reset to default color
+    RED = 'ERROR '  # Red text
+    GREEN = 'SUCCESS '  # Green text
+    YELLOW = ''  # Yellow text
+    BLUE = ''  # Blue text
+    MAGENTA = 'WARN '  # Magenta text
+    CYAN = 'INFO '  # Cyan text
+    RESET = ''  # Reset to default color
 
 # Create a custom logger for the component
 _LOGGER = logging.getLogger(__name__)
@@ -37,7 +37,7 @@ formatter = logging.Formatter('%(message)s')
 file_handler.setFormatter(formatter)
 _LOGGER.addHandler(file_handler)
 
-MIN_TIME_BETWEEN_UPDATES = timedelta(minutes=15)
+MIN_TIME_BETWEEN_UPDATES = timedelta(hours=6)
 
 CONF_DAYS = "days"
 CONF_EAN = "ean"
@@ -74,7 +74,8 @@ class EGDPowerDataSensor(Entity):
         self._session = requests.Session()
         self._unique_id = f"egddistribuce_{ean}_{days}_{profile.lower()}"
         self.entity_id = f"sensor.egddistribuce_{ean}_{days}_{profile.lower()}"
-        _LOGGER.debug(dt.now().strftime("%Y-%m-%d %H:%M:%S") + f": {Colors.CYAN}Initialized EGDPowerDataSensor with EAN: {self.ean}, Profile: {self.profile}{Colors.RESET}")
+        _LOGGER.debug(dt.now().strftime("%Y-%m-%d %H:%M:%S") +
+                      f": {Colors.CYAN}Initialized EGDPowerDataSensor with EAN: {self.ean}, Profile: {self.profile}{Colors.RESET}")
         self.update()
 
     @property
@@ -96,18 +97,22 @@ class EGDPowerDataSensor(Entity):
     @Throttle(MIN_TIME_BETWEEN_UPDATES)
     def update(self, no_throttle=False):
         if not self.ean:
-            _LOGGER.warning(dt.now().strftime("%Y-%m-%d %H:%M:%S") + f": {Colors.RED}EAN is not set. Skipping update.{Colors.RESET}")
+            _LOGGER.warning(dt.now().strftime("%Y-%m-%d %H:%M:%S") +
+                            f": {Colors.RED}EAN is not set. Skipping update.{Colors.RESET}")
             return
 
-        _LOGGER.debug(dt.now().strftime("%Y-%m-%d %H:%M:%S") + f": {Colors.CYAN}>>>>>>>>>>>Updating EGD Power Data Sensor for EAN: {self.ean}, Profile: {self.profile}{Colors.RESET}")
+        _LOGGER.debug(dt.now().strftime("%Y-%m-%d %H:%M:%S") +
+                      f": {Colors.CYAN}>>>>>>>>>>>Updating EGD Power Data Sensor for EAN: {self.ean}, Profile: {self.profile}{Colors.RESET}")
         try:
             token = self._get_access_token()
             self._get_data(token)
         except Exception as e:
-            _LOGGER.error(dt.now().strftime("%Y-%m-%d %H:%M:%S") + f": {Colors.RED}Error updating sensor: {e}{Colors.RESET}")
+            _LOGGER.error(dt.now().strftime("%Y-%m-%d %H:%M:%S") +
+                          f": {Colors.RED}Error updating sensor: {e}{Colors.RESET}")
 
     def _get_access_token(self):
-        _LOGGER.debug(dt.now().strftime("%Y-%m-%d %H:%M:%S") + f": {Colors.CYAN}Retrieving access token{Colors.RESET}")
+        _LOGGER.debug(dt.now().strftime("%Y-%m-%d %H:%M:%S") +
+                      f": {Colors.CYAN}Retrieving access token{Colors.RESET}")
         try:
             response = self._session.post(
                 TOKEN_URL,
@@ -120,22 +125,27 @@ class EGDPowerDataSensor(Entity):
             )
             response.raise_for_status()
             token = response.json().get('access_token')
-            _LOGGER.debug(dt.now().strftime("%Y-%m-%d %H:%M:%S") + f": {Colors.GREEN}Access token retrieved: {token}{Colors.RESET}")
+            _LOGGER.debug(dt.now().strftime("%Y-%m-%d %H:%M:%S") +
+                          f": {Colors.GREEN}Access token retrieved: {token}{Colors.RESET}")
             return token
         except requests.exceptions.RequestException as e:
-            _LOGGER.error(dt.now().strftime("%Y-%m-%d %H:%M:%S") + f": {Colors.RED}Error retrieving access token: {e}{Colors.RESET}")
+            _LOGGER.error(dt.now().strftime("%Y-%m-%d %H:%M:%S") +
+                          f": {Colors.RED}Error retrieving access token: {e}{Colors.RESET}")
             raise
 
     def _get_data(self, token):
-        _LOGGER.debug(dt.now().strftime("%Y-%m-%d %H:%M:%S") + f": {Colors.CYAN}Retrieving data with token: {token}{Colors.RESET}")
+        _LOGGER.debug(dt.now().strftime("%Y-%m-%d %H:%M:%S") +
+                      f": {Colors.CYAN}Retrieving data with token: {token}{Colors.RESET}")
 
         # Define the CEST timezone
         local_tz = tz.gettz('Europe/Prague')
 
         # Define the start time as the previous number of days at 00:00:00
-        local_stime = (datetime.datetime.now() - timedelta(days=self.days)).replace(hour=0, minute=0, second=0, microsecond=0)
+        local_stime = (datetime.datetime.now() - timedelta(days=self.days)).replace(
+            hour=0, minute=0, second=0, microsecond=0)
         # Define the end time as yesterday at 23:45:00
-        local_etime = (datetime.datetime.now() - timedelta(days=1)).replace(hour=23, minute=45, second=0, microsecond=0)
+        local_etime = (datetime.datetime.now() - timedelta(days=1)).replace(
+            hour=23, minute=45, second=0, microsecond=0)
 
         # Assign the CEST timezone to the local time
         local_stime = local_stime.replace(tzinfo=local_tz)
@@ -157,18 +167,33 @@ class EGDPowerDataSensor(Entity):
         }
 
         try:
-            _LOGGER.debug(dt.now().strftime("%Y-%m-%d %H:%M:%S") + f": {Colors.CYAN}Headers: {params}{Colors.RESET}")
-            _LOGGER.debug(dt.now().strftime("%Y-%m-%d %H:%M:%S") + f": {Colors.CYAN}Data url: {DATA_URL}{Colors.RESET}")
+            _LOGGER.debug(dt.now().strftime("%Y-%m-%d %H:%M:%S") +
+                          f": {Colors.CYAN}Headers: {params}{Colors.RESET}")
+            _LOGGER.debug(dt.now().strftime("%Y-%m-%d %H:%M:%S") +
+                          f": {Colors.CYAN}Data url: {DATA_URL}{Colors.RESET}")
             response = self._session.get(DATA_URL, headers=headers, params=params)
-            _LOGGER.debug(dt.now().strftime("%Y-%m-%d %H:%M:%S") + f": {Colors.MAGENTA}Response status code: {response.status_code}{Colors.RESET}")
-            _LOGGER.debug(dt.now().strftime("%Y-%m-%d %H:%M:%S") + f": {Colors.CYAN}Response content: {response.content}{Colors.RESET}")
+            _LOGGER.debug(dt.now().strftime("%Y-%m-%d %H:%M:%S") +
+                          f": {Colors.MAGENTA}Response status code: {response.status_code}{Colors.RESET}")
+            _LOGGER.debug(dt.now().strftime("%Y-%m-%d %H:%M:%S") +
+                          f": {Colors.CYAN}Response content: {response.content}{Colors.RESET}")
             response.raise_for_status()
             data = response.json()
-            
+
+            # Check if the response contains "No results"
+            if isinstance(data, dict) and data.get('error') == 'No results':
+                _LOGGER.info(dt.now().strftime("%Y-%m-%d %H:%M:%S") +
+                             f": {Colors.MAGENTA}No data available for the requested period.{Colors.RESET}")
+                # Do not update the state or attributes
+                return
+
             try:
-                total_value = sum(item['value'] for item in data[0]['data'])/4
-            except:
-                total_value = 0
+                total_value = sum(item['value'] for item in data[0]['data']) / 4
+            except Exception as e:
+                _LOGGER.error(dt.now().strftime("%Y-%m-%d %H:%M:%S") +
+                              f": {Colors.RED}Error processing data: {e}{Colors.RESET}")
+                # Do not update the state or attributes
+                return
+
             self._state = total_value
             self._attributes = {
                 'stime': utc_stime.strftime('%Y-%m-%d %H:%M:%S %Z%z'),
@@ -176,9 +201,11 @@ class EGDPowerDataSensor(Entity):
                 'local_stime': local_stime.strftime('%Y-%m-%d %H:%M:%S %Z%z'),
                 'local_etime': local_etime.strftime('%Y-%m-%d %H:%M:%S %Z%z')
             }
-            _LOGGER.debug(dt.now().strftime("%Y-%m-%d %H:%M:%S") + f": {Colors.CYAN}Total value: {total_value}{Colors.RESET}")
+            _LOGGER.debug(dt.now().strftime("%Y-%m-%d %H:%M:%S") +
+                          f": {Colors.CYAN}Total value: {total_value}{Colors.RESET}")
         except requests.exceptions.RequestException as e:
-            _LOGGER.error(dt.now().strftime("%Y-%m-%d %H:%M:%S") + f": {Colors.RED}Error retrieving data: {e}{Colors.RESET}")
+            _LOGGER.error(dt.now().strftime("%Y-%m-%d %H:%M:%S") +
+                          f": {Colors.RED}Error retrieving data: {e}{Colors.RESET}")
             raise
 
 class EGDPowerDataConsumptionSensor(EGDPowerDataSensor):
@@ -217,7 +244,8 @@ class EGDPowerDataStatusSensor(Entity):
         self._session = requests.Session()
         self._unique_id = f"egddistribuce_status_{ean}_{days}"
         self.entity_id = f"sensor.egddistribuce_status_{ean}_{days}"
-        _LOGGER.debug(dt.now().strftime("%Y-%m-%d %H:%M:%S") + f": {Colors.GREEN}Initialized EGDPowerDataStatusSensor with EAN: {self.ean}{Colors.RESET}")
+        _LOGGER.debug(dt.now().strftime("%Y-%m-%d %H:%M:%S") +
+                      f": {Colors.GREEN}Initialized EGDPowerDataStatusSensor with EAN: {self.ean}{Colors.RESET}")
         self.update()
 
     @property
@@ -236,18 +264,20 @@ class EGDPowerDataStatusSensor(Entity):
     def extra_state_attributes(self):
         return self._attributes
 
-    #@Throttle(MIN_TIME_BETWEEN_UPDATES)
-    #def update(self, no_throttle=False):
+    @Throttle(MIN_TIME_BETWEEN_UPDATES)
     def update(self):
-        _LOGGER.debug(dt.now().strftime("%Y-%m-%d %H:%M:%S") + f": {Colors.CYAN}Updating EGD Power Data Status Sensor for EAN: {self.ean}{Colors.RESET}")
+        _LOGGER.debug(dt.now().strftime("%Y-%m-%d %H:%M:%S") +
+                      f": {Colors.CYAN}Updating EGD Power Data Status Sensor for EAN: {self.ean}{Colors.RESET}")
         try:
             self.hass.add_job(self._update_related_sensors())
             self._state = "updated"
         except Exception as e:
-            _LOGGER.error(dt.now().strftime("%Y-%m-%d %H:%M:%S") + f": {Colors.RED}Error updating status sensor: {e}{Colors.RESET}")
+            _LOGGER.error(dt.now().strftime("%Y-%m-%d %H:%M:%S") +
+                          f": {Colors.RED}Error updating status sensor: {e}{Colors.RESET}")
 
     async def _update_related_sensors(self):
-        _LOGGER.debug(dt.now().strftime("%Y-%m-%d %H:%M:%S") + f": {Colors.CYAN}Updating related sensors for EAN: {self.ean}{Colors.RESET}")
+        _LOGGER.debug(dt.now().strftime("%Y-%m-%d %H:%M:%S") +
+                      f": {Colors.CYAN}Updating related sensors for EAN: {self.ean}{Colors.RESET}")
         for entity_id in [
             f"sensor.egddistribuce_{self.ean}_{self.days}_icc1",
             f"sensor.egddistribuce_{self.ean}_{self.days}_isc1"
